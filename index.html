@@ -312,7 +312,7 @@ header.band .eyebrow,header.band h1,header.band #meta,header.band .band-meta{tex
     </label>
     <label for="pasteT" style="display:grid;gap:4px;margin-top:12px;font-size:13px;font-weight:600;color:var(--muted)">Tempel teks temuan
       <textarea id="pasteT" rows="3" style="background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:9px;font:inherit" placeholder="Tempel laporan temuan dari WhatsApp atau catatan"></textarea></label>
-    <div class="row" style="margin-top:8px"><button class="btn" id="btnPasteT" type="button">Baca teks temuan</button><button class="btn" id="tplIns" type="button">Unduh template Rekap Inspeksi</button></div>
+    <div class="row" style="margin-top:8px"><button class="btn" id="btnPasteT" type="button">Baca teks temuan</button><button class="btn" id="tplIns" type="button">Unduh template Rekap Inspeksi</button><button class="btn btn-pri" id="btnJam" type="button">Perbaiki data jam</button><label class="btn" style="display:inline-flex;align-items:center;cursor:pointer">Masukkan foto dari banyak Excel<input class="vh" type="file" id="fileFoto" accept=".xlsx" multiple></label></div>
     <div id="review"></div>
     <div id="preview"></div>
   </section>
@@ -1072,8 +1072,8 @@ function renderTemuan(){
   hbars(a,countBy(list,function(x){return x.loc},function(x){return x.n}).slice(0,8),css('--s-uc'));hbars(b,countBy(list,function(x){return x.src},function(x){return x.n}),css('--s-ua'));
   var ph=man.filter(function(r){return r.photo||r.photoClosing}).map(function(r){return r.photo?r:Object.assign({},r,{photo:r.photoClosing})}).slice().reverse().slice(0,24);
   if(ph.length){var g=h('div',{cls:'gallery'});ph.forEach(function(r){var im=h('img',{src:blobUrl(r.photo),alt:r.what,loading:'lazy'});g.appendChild(h('a',{href:blobUrl(r.photo),target:'_blank',rel:'noopener'},[h('figure',{},[im,h('figcaption',{},[h('div',{text:fmtDs(r.date)+' · '+r.loc}),h('div',{text:r.what}),h('span',{cls:'pill '+(r.closed?'ok':'warn'),text:r.closed?'✓ Selesai':'● Terbuka'})])])]))});host.appendChild(panel('Foto temuan','Foto terbaru. Klik foto untuk memperbesar.',[g]))}
-  var t=h('div',{cls:'tbl-scroll'});host.appendChild(panel('Daftar temuan',(list.length>60?'60 terbaru dari '+fmtN(list.length)+'. ':'')+'Temuan dari Excel ditutup dengan mengubah Excel lalu upload ulang.',[t]));
-  simpleTable(t,['Foto','Tanggal','Sumber','Lokasi','Temuan','Tindakan','Status'],list,function(x){return h('tr',{},[h('td',{},[x.photo?h('a',{href:blobUrl(x.photo),target:'_blank',rel:'noopener'},[h('img',{cls:'thumb',src:blobUrl(x.photo),alt:'Foto temuan',loading:'lazy'})]):x.file?h('a',{cls:'lnk',href:fileUrl(x.file),target:'_blank',rel:'noopener',text:'PDF'}):x.photoC?null:'–',x.photoC?h('a',{href:blobUrl(x.photoC),target:'_blank',rel:'noopener',style:'display:block;margin-top:4px'},[h('img',{cls:'thumb',src:blobUrl(x.photoC),alt:'Foto closing',title:'Foto closing',loading:'lazy'})]):null]),h('td',{cls:'nw',text:fmtD(x.date)}),h('td',{cls:'nw',text:x.src}),h('td',{text:x.loc}),h('td',{cls:'long',text:x.what}),h('td',{cls:'long',text:x.fix||'–'}),h('td',{},[h('span',{cls:'pill '+(x.open?'warn':'ok'),text:x.open?'● Terbuka':'✓ Selesai'})])])},'',60);
+  var t=h('div',{cls:'tbl-scroll'});host.appendChild(panel('Daftar temuan',fmtN(list.length)+' temuan. Temuan dari Excel ditutup dengan mengubah Excel lalu upload ulang.',[t]));
+  simpleTable(t,['Foto temuan','Foto closing','Tanggal','Sumber','Lokasi','Temuan','Tindakan','Status'],list,function(x){return h('tr',{},[h('td',{},[x.photo?h('a',{href:blobUrl(x.photo),target:'_blank',rel:'noopener'},[h('img',{cls:'thumb',src:blobUrl(x.photo),alt:'Foto temuan',loading:'lazy'})]):x.file?h('a',{cls:'lnk',href:fileUrl(x.file),target:'_blank',rel:'noopener',text:'PDF'}):'–']),h('td',{},[x.photoC?h('a',{href:blobUrl(x.photoC),target:'_blank',rel:'noopener'},[h('img',{cls:'thumb',src:blobUrl(x.photoC),alt:'Foto closing',loading:'lazy'})]):'–']),h('td',{cls:'nw',text:fmtD(x.date)}),h('td',{cls:'nw',text:x.src}),h('td',{text:x.loc}),h('td',{cls:'long',text:x.what}),h('td',{cls:'long',text:x.fix||'–'}),h('td',{},[h('span',{cls:'pill '+(x.open?'warn':'ok'),text:x.open?'● Terbuka':'✓ Selesai'})])])},'',list.length);
 }
 function renderInspeksi(){
   var host=clear($('v-inspeksi')),rows=pRows('inspeksi');
@@ -2450,6 +2450,7 @@ function parseDailyForm(wb,fileName){
     var n=function(v){return typeof v==='number'?v:(parseFloat(String(v==null?'':v).replace(',','.'))||0)};
     var dr=find('U',/^Date/i),date=parseDate(V('W',dr))||parseDate(sn);
     if(!date){out.problems.push({where:sn,msg:'tanggal laporan tidak terbaca'});return}
+    var tglSheet=parseDate(sn);if(tglSheet&&tglSheet!==date)out.problems.push({where:sn,msg:'tanggal di dalam laporan ('+date+') beda dengan nama sheet, cek dulu'});
     var rM=find('P',/^Manpower today/i),rSafe=find('P',/^Total safe man days/i),rEq=find('P',/^Equipment today/i);
     var mp=n(V('U',rM));
     var kat=function(re){var r=find('C',re);return r?n(V('Y',r)):0};
@@ -2554,6 +2555,39 @@ async function takeTemuanExcel(file){
     say(fmtN(jml)+' temuan closed tersimpan'+(lewat?', '+fmtN(lewat)+' baris dilewati karena bukan Closed atau belum lengkap':'')+'. Upload ulang file yang sama tidak membuat data dobel.','ok');
   }catch(e){say('Excel temuan gagal dibaca. Pastikan sheet bernama Temuan dan judul kolomnya tidak diubah.','bad')}
 }
+// perbaikan sekali klik: tanggal dobel dan dua tanggal salah ketik di Daily Report (Nov 2026)
+var FIX_JAM=[{"date":"2026-04-06","loc":"TUBAN-JAWA TIMUR","spv":"Jauhari","mp":30,"act":"Loading-Unloading Material Isolation; Insulation Mechanical; Pasang Hdpuff; Fabrikasi Material Insulation","tbm":true,"ua":0,"uaText":"","uc":0,"ucText":"","ppe":null,"nm":0,"inc":0,"unk":0,"evText":"","fix":"","fu":null,"rem":"","file":null,"hours":240,"safeH":656,"eq":4,"eqH":36,"ot":0,"smt":true,"insp":1,"hse":"SMT All Kontaktor; TBM Internal Meiso; Monitoring aktivitas Bongkar Material Insulation; Pemasangan Insulation Mechanical ( Meterting )","perfect":151,"direct":20,"indirect":10},{"date":"2026-05-06","loc":"TUBAN-JAWA TIMUR","spv":"Jauhari","mp":29,"act":"Loading-Unloading Material Isolation; Insulation piping; Pasang Hdpuff; Fabrikasi Material Insulation","tbm":true,"ua":0,"uaText":"","uc":0,"ucText":"","ppe":null,"nm":0,"inc":0,"unk":0,"evText":"","fix":"","fu":null,"rem":"","file":null,"hours":244,"safeH":1148,"eq":5,"eqH":45,"ot":15,"smt":true,"insp":1,"hse":"SMT All Kontaktor; TBM Internal Meiso; Monitoring aktivitas Bongkar Material Insulation","perfect":150,"direct":20,"indirect":9},{"date":"2026-06-05","loc":"TUBAN-JAWA TIMUR","spv":"Jauhari","mp":44,"act":"Loading-Unloading Material Isolation; Insulation Hdpuff; Pasang insulation piping; Pasang Insulation Piping; Pasang Insulation Hdpuff; Fabrikasi Material Insulation","tbm":true,"ua":0,"uaText":"","uc":0,"ucText":"","ppe":null,"nm":0,"inc":0,"unk":0,"evText":"","fix":"","fu":null,"rem":"","file":null,"hours":381,"safeH":1848,"eq":9,"eqH":81,"ot":13,"smt":true,"insp":1,"hse":"SMT All Kontaktor; TBM Internal Meiso; Monitoring aktivitas Bongkar Material Insulation","perfect":150,"direct":33,"indirect":11},{"date":"2026-06-06","loc":"TUBAN-JAWA TIMUR","spv":"Jauhari","mp":52,"act":"Loading-Unloading Material Isolation; Insulation Hdpuff; Pasang insulation piping; Pasang Insulation Piping; Pasang Insulation Hdpuff; Fabrikasi Material Insulation","tbm":true,"ua":0,"uaText":"","uc":0,"ucText":"","ppe":null,"nm":0,"inc":0,"unk":0,"evText":"","fix":"","fu":null,"rem":"","file":null,"hours":450,"safeH":2298,"eq":9,"eqH":81,"ot":10,"smt":true,"insp":1,"hse":"SMT All Kontaktor; TBM Internal Meiso; Monitoring aktivitas Bongkar Material Insulation","perfect":151,"direct":41,"indirect":11}];
+async function perbaikiJam(btn){
+  if(!state.db||!state.canEdit){say('Masuk Admin dulu.','bad');return}
+  if(btn)btn.disabled=true;
+  try{
+    var tg={};FIX_JAM.forEach(function(r){tg[r.date]=1});
+    var ubah=0,ids=Object.keys(state.weeks),hasil={};
+    ids.forEach(function(id){var seen={},rows=(state.weeks[id].rows||[]);hasil[id]=rows.filter(function(r){if(tg[r.date])return false;var k=tripleKey(r);if(seen[k])return false;seen[k]=1;return true})});
+    FIX_JAM.forEach(function(r){var w=weekId(r.date);(hasil[w]=hasil[w]||[]).push(r)});
+    var now=new Date().toISOString(),tulis=Object.keys(hasil);
+    for(var i=0;i<tulis.length;i++){var id=tulis[i],lama=(state.weeks[id]&&state.weeks[id].rows)||[],baru=hasil[id].slice().sort(byDate);
+      if(JSON.stringify(lama.slice().sort(byDate))===JSON.stringify(baru))continue;
+      say('Memperbaiki data jam…');await putDoc('weeks',id,{rows:baru,updatedAt:now},state.weeks);ubah++}
+    var tot=allRows().reduce(function(a,r){return a+(r.hours||0)},0);
+    render();say('Data jam sudah benar. Total sekarang '+fmtN(tot)+' jam ('+fmtN(ubah)+' minggu diperbaiki).','ok');
+  }catch(e){say('Perbaikan gagal, tidak ada yang rusak. Coba lagi.','bad')}
+  if(btn)btn.disabled=false;
+}
+// foto dokumentasi dari banyak Excel: satu per satu supaya browser tidak berat, foto yang sudah masuk dilewati
+async function fotoBanyak(files){
+  var list=[].slice.call(files).filter(function(f){return /\.xlsx$/i.test(f.name)}).sort(function(a,b){return a.name<b.name?-1:1});
+  if(!list.length)return;
+  if(!state.assets){say('Masuk Admin dulu.','bad');return}
+  var ok=0,gagal=[];
+  for(var i=0;i<list.length;i++){var f=list[i];
+    try{say('File '+(i+1)+' dari '+list.length+': membaca '+f.name+'. Jangan tutup halaman ini.');
+      var h=await aktFotoDariExcel(f,function(a,b){say('File '+(i+1)+' dari '+list.length+': foto '+a+' dari '+b+'. Jangan tutup halaman ini.')});ok+=h.ok;if(h.gagal)gagal.push(f.name)}
+    catch(e){gagal.push(f.name);if(e&&e.code==='invalid_argument')break}
+  }
+  render();
+  if(gagal.length)say(fmtN(ok)+' foto masuk. Pilih ulang file ini, foto yang sudah masuk tidak dobel: '+gagal.join(', '),'bad');else say(fmtN(ok)+' foto dari '+list.length+' file masuk ke dasbor.','ok');
+}
 function handleFiles(list){
   if(!list||!list.length)return;
   var all=[].slice.call(list);
@@ -2620,7 +2654,7 @@ async function commit(btn){
     for(var q=0;q<kinds.length;q++){
       var k=kinds[q],it=res.items[k];total+=it.rows.length;
       if(k==='daily'){
-        var inc={},byWeek={};it.rows.forEach(function(r){inc[tripleKey(r)]=1;var w=weekId(r.date);(byWeek[w]=byWeek[w]||[]).push(r)});
+        var inc={},byWeek={},uniq={};it.rows.forEach(function(r){uniq[tripleKey(r)]=r});Object.keys(uniq).forEach(function(q){var r=uniq[q];inc[q]=1;var w=weekId(r.date);(byWeek[w]=byWeek[w]||[]).push(r)});
         var ids=Object.keys(byWeek).sort();
         for(var i=0;i<ids.length;i++){var id=ids[i];var keep=((state.weeks[id]&&state.weeks[id].rows)||[]).filter(function(r){return !inc[tripleKey(r)]});await putDoc('weeks',id,{rows:keep.concat(byWeek[id]).sort(byDate),updatedAt:now},state.weeks);done++}
       }else if(k==='alat'){
@@ -2736,7 +2770,7 @@ async function makePdf(){
 $('btnUpload').addEventListener('click',function(){var p=$('uploadPanel');p.hidden=!p.hidden;if(!p.hidden)p.scrollIntoView({block:'nearest'})});
 $('tplIns').addEventListener('click',templateInspeksi);
 $('btnXlsx').addEventListener('click',makeExcel);$('btnPpt').addEventListener('click',makePpt);
-$('btnPasteT').addEventListener('click',function(){var t=$('pasteT').value.trim();if(!t){say('Tempel teks temuannya dulu.','bad');return}$('pasteT').value='';takeText(t)});
+$('btnJam').addEventListener('click',function(e){perbaikiJam(e.currentTarget)});$('fileFoto').addEventListener('change',function(e){var f=e.target.files;fotoBanyak([].slice.call(f));e.target.value=''});$('btnPasteT').addEventListener('click',function(){var t=$('pasteT').value.trim();if(!t){say('Tempel teks temuannya dulu.','bad');return}$('pasteT').value='';takeText(t)});
 document.addEventListener('paste',function(e){
   if(!state.canEdit||!e.clipboardData)return;
   var cd=e.clipboardData,f=[].slice.call(cd.files||[]).filter(function(x){return /^image\//.test(x.type)});

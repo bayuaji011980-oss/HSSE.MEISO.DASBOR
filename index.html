@@ -1855,16 +1855,18 @@ async function lapPdf(J,doc,label,btn){
   var W=794,wrap=h('div',{style:'position:fixed;left:-10000px;top:0;width:'+W+'px;background:#fff;z-index:-1'}),el=doc.cloneNode(true);
   el.style.borderRadius='0';wrap.appendChild(el);document.body.appendChild(wrap);
   try{
-    /* foto dimuat ulang dengan izin CORS supaya bisa masuk ke PDF; yang gagal diganti keterangan */
-    var imgs=[].slice.call(el.querySelectorAll('img')),gagal=0,sel=0;
-    if(imgs.length)say('Memuat '+fmtN(imgs.length)+' foto untuk PDF…');
-    await Promise.all(imgs.map(function(im){return new Promise(function(res){
-      var s=im.getAttribute('src')||'';if(/^(data:|blob:)/.test(s)){res();return}
-      var t=setTimeout(fin,30000),done=false;function fin(ok){if(done)return;done=true;clearTimeout(t);sel++;
-        if(ok!==true){gagal++;var p=h('div',{style:'padding:30px 6px;text-align:center;font-size:11px;color:#5b6a75;border:1px dashed #c9d2db',text:'Foto tidak bisa dimuat ke PDF'});if(im.parentNode)im.parentNode.replaceChild(p,im)}
-        btn.textContent='Foto '+sel+'/'+imgs.length;res()}
-      im.onload=function(){fin(true)};im.onerror=function(){fin(false)};im.loading='eager';im.crossOrigin='anonymous';im.src=s+(s.indexOf('?')<0?'?':'&')+'cors=1';
-    })}));
+    /* foto diambil lewat Apps Script (action=img) karena Google Drive tidak mengizinkan foto disalin langsung ke PDF;
+       foto diperkecil maks 1000px supaya PDF tidak terlalu besar. 4 foto diambil bersamaan. */
+    var imgs=[].slice.call(el.querySelectorAll('img')).filter(function(im){return !/^(data:|blob:)/.test(im.getAttribute('src')||'')}),gagal=0,sel=0;
+    if(imgs.length)say('Mengambil '+fmtN(imgs.length)+' foto untuk PDF… (bisa 1–2 menit)');
+    var kecil=function(src){return new Promise(function(res){var i=new Image();i.onload=function(){var k=Math.min(1,1000/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=Math.round(i.width*k);c.height=Math.round(i.height*k);c.getContext('2d').drawImage(i,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',.82))};i.onerror=function(){res(src)};i.src=src})};
+    var satu=async function(im){
+      var s=im.getAttribute('src')||'',m=s.match(/[?&]id=([^&]+)/),data=null;
+      if(m&&window.imgData){for(var t=0;t<2&&!data;t++){try{data=await Promise.race([window.imgData(decodeURIComponent(m[1])),new Promise(function(_,r){setTimeout(function(){r(new Error('lama'))},40000)})])}catch(e){}}}
+      if(data){data=await kecil(data);await new Promise(function(r){im.onload=r;im.onerror=r;im.removeAttribute('loading');im.src=data})}
+      else{gagal++;var ph=h('div',{style:'padding:30px 6px;text-align:center;font-size:11px;color:#5b6a75;border:1px dashed #c9d2db',text:'Foto tidak bisa dimuat ke PDF'});if(im.parentNode)im.parentNode.replaceChild(ph,im)}
+      sel++;btn.textContent='Foto '+sel+'/'+imgs.length};
+    var antri=imgs.slice();await Promise.all([0,1,2,3].map(async function(){while(antri.length)await satu(antri.shift())}));
     await new Promise(function(r){setTimeout(r,120)});
     /* titik potong halaman yang rapi: di antara baris tabel, foto, dan judul */
     var top0=el.getBoundingClientRect().top,tot=el.scrollHeight,brk=[];
